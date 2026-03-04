@@ -2,6 +2,14 @@
 
 Last updated: 2026-03-04 (KST)
 
+## 0) 키워드 트리거 (`제본`)
+- 사용자가 `제본`이라고 말하면 이 프로젝트를 의미함.
+- 다음 CLI는 즉시 아래 파일부터 읽고 이어서 작업할 것:
+  1. `/Users/kimhyeonho/JEBON_COVER_CLI_HANDOFF.md`
+  2. `/Users/kimhyeonho/cover_generator.py`
+  3. `/Users/kimhyeonho/jebon-cover-generator/README.md`
+- 기본 목표: `권/날짜/지급번호` 기반 대량 표지 PDF 생성 워크플로 유지/개선.
+
 ## 1) 현재 산출물 위치
 - 메인 소스: `/Users/kimhyeonho/cover_generator.py`
 - 실행 앱(최신): `/Users/kimhyeonho/Desktop/JEBONCoverGenerator.app`
