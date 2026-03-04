@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+import os
 from pathlib import Path
 from queue import Empty, Queue
 import subprocess
+import sys
 import threading
 import time
 import tkinter as tk
@@ -19,11 +21,58 @@ from openpyxl.utils.datetime import from_excel
 RAW_SHEET = "RAW"
 COVER_SHEET = "cover"
 DATE_CELL = "H7"
-FONT_CANDIDATES = [
-    Path("/System/Library/Fonts/Supplemental/AppleGothic.ttf"),
-    Path("/System/Library/Fonts/AppleSDGothicNeo.ttc"),
-]
-DEFAULT_OUTPUT_DIR = Path.home() / "Desktop" / "JEBON_OUTPUT"
+
+
+def get_font_candidates() -> list[Path]:
+    custom_font = os.environ.get("JEBON_FONT_PATH", "").strip()
+    candidates: list[Path] = []
+    if custom_font:
+        candidates.append(Path(custom_font))
+
+    if sys.platform == "darwin":
+        candidates.extend(
+            [
+                Path("/System/Library/Fonts/Supplemental/AppleGothic.ttf"),
+                Path("/System/Library/Fonts/AppleSDGothicNeo.ttc"),
+            ]
+        )
+    elif sys.platform == "win32":
+        windir = Path(os.environ.get("WINDIR", r"C:\Windows"))
+        candidates.extend(
+            [
+                windir / "Fonts" / "malgun.ttf",
+                windir / "Fonts" / "malgunbd.ttf",
+                windir / "Fonts" / "gulim.ttc",
+                windir / "Fonts" / "batang.ttc",
+            ]
+        )
+    else:
+        candidates.extend(
+            [
+                Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf"),
+                Path("/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc"),
+            ]
+        )
+
+    # Remove duplicates while preserving order.
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for p in candidates:
+        key = str(p)
+        if key not in seen:
+            seen.add(key)
+            unique.append(p)
+    return unique
+
+
+def get_default_output_dir() -> Path:
+    desktop = Path.home() / "Desktop"
+    base = desktop if desktop.exists() else Path.home()
+    return base / "JEBON_OUTPUT"
+
+
+FONT_CANDIDATES = get_font_candidates()
+DEFAULT_OUTPUT_DIR = get_default_output_dir()
 
 
 @dataclass
@@ -254,6 +303,16 @@ def generate_cover_pdf(record: CoverRecord, output_dir: Path) -> Path:
     return output_path
 
 
+def open_folder_in_file_manager(path: Path) -> None:
+    if sys.platform == "win32":
+        os.startfile(str(path))  # type: ignore[attr-defined]
+        return
+    if sys.platform == "darwin":
+        subprocess.run(["open", str(path)], check=False)
+        return
+    subprocess.run(["xdg-open", str(path)], check=False)
+
+
 class CoverGeneratorApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
@@ -296,10 +355,23 @@ class CoverGeneratorApp:
 
     def _build_style(self) -> None:
         style = ttk.Style(self.root)
-        style.configure("Header.TLabel", font=("Apple SD Gothic Neo", 18, "bold"))
-        style.configure("SubHeader.TLabel", font=("Apple SD Gothic Neo", 11))
-        style.configure("CardTitle.TLabel", font=("Apple SD Gothic Neo", 10, "bold"))
-        style.configure("CardValue.TLabel", font=("SF Pro Text", 14, "bold"))
+        if sys.platform == "win32":
+            header_font = ("Malgun Gothic", 18, "bold")
+            body_font = ("Malgun Gothic", 10)
+            value_font = ("Malgun Gothic", 13, "bold")
+        elif sys.platform == "darwin":
+            header_font = ("Apple SD Gothic Neo", 18, "bold")
+            body_font = ("Apple SD Gothic Neo", 11)
+            value_font = ("SF Pro Text", 14, "bold")
+        else:
+            header_font = ("Noto Sans CJK KR", 18, "bold")
+            body_font = ("Noto Sans CJK KR", 10)
+            value_font = ("Noto Sans CJK KR", 13, "bold")
+
+        style.configure("Header.TLabel", font=header_font)
+        style.configure("SubHeader.TLabel", font=body_font)
+        style.configure("CardTitle.TLabel", font=body_font)
+        style.configure("CardValue.TLabel", font=value_font)
 
     def _build_ui(self) -> None:
         main = ttk.Frame(self.root, padding=14)
@@ -479,7 +551,7 @@ class CoverGeneratorApp:
             messagebox.showwarning("폴더 없음", f"출력 폴더가 없습니다:\n{output_dir}")
             return
         try:
-            subprocess.run(["open", str(output_dir)], check=False)
+            open_folder_in_file_manager(output_dir)
         except Exception as exc:
             messagebox.showerror("열기 실패", f"폴더 열기에 실패했습니다:\n{exc}")
 

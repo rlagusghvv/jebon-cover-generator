@@ -43,6 +43,13 @@ Last updated: 2026-03-04 (KST)
 - 실패 시 대체: `/System/Library/Fonts/AppleSDGothicNeo.ttc`
 - 이유: 일부 환경에서 AppleGothic이 `fpdf2`에서 `KeyError('OS/2')` 발생 가능
 
+6. Windows 호환 분기 추가
+- Windows 폰트 후보 자동 탐색: `C:\\Windows\\Fonts\\malgun.ttf` 등
+- 출력 폴더 열기 OS 분기:
+  - Windows: `os.startfile`
+  - macOS: `open`
+  - Linux: `xdg-open`
+
 ## 4) 사용자 요구 반영 포인트
 - “권마다 날짜/번호 다름” 대응 완료:
   - Excel `RAW` A:C 그대로 읽기
